@@ -9,7 +9,7 @@ build = "build.rs"
 [dependencies]
 async_once = "0.2.6"
 bytes = "1.9.0"
-chrono = { version = "0.4.31", features = ["serde"] }
+chrono = { version = "0.4.39", features = ["serde"] }
 clap = { version = "4.5.23", features = ["derive"] }
 color-eyre = "0.6.2"
 derive_more = { version = "1.0.0", default-features = false, features = ["constructor", "display", "is_variant"] }
