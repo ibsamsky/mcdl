@@ -29,7 +29,7 @@ try `linux.nightly.release` for Linux and `windows-msvc.nightly.release` for Win
 cargo install --git https://github.com/ibsamsky/mcdl
 ```
 
-[actions]: https://github.com/ibsamsky/mcdl/actions?query=is%3Asuccess
+[actions]: https://github.com/ibsamsky/mcdl/actions?query=is%253Asuccess+workflow%253Aci
 [nightly]: https://nightly.link/ibsamsky/mcdl/workflows/test/main
 
 ## Todo (rough)
