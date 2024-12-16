@@ -1,0 +1,72 @@
+[package]
+name = "mcdl"
+version = "0.2.5"
+authors = ["Isaac Samsky <191916568+ibsamsky@users.noreply.github.com>"]
+homepage = "https://github.com/ibsamsky/mcdl"
+edition = "2021"
+build = "build.rs"
+
+[dependencies]
+async_once = "0.2.6"
+bytes = "1.9.0"
+chrono = { version = "0.4.31", features = ["serde"] }
+clap = { version = "4.5.23", features = ["derive"] }
+color-eyre = "0.6.2"
+derive_more = { version = "1.0.0", default-features = false, features = ["constructor", "display", "is_variant"] }
+dialoguer = { version = "0.11.0", default-features = false }
+directories = "5.0.1"
+indicatif = "0.17.9"
+itertools = "0.13.0"
+lazy_static = "1.5.0"
+parking_lot = "0.12.1"
+paste = "1.0.14"
+prettytable-rs = { version = "0.10.0", default-features = false }
+regex = "1.11.1"
+reqwest = { version = "0.12.9", default-features = false, features = ["charset", "rustls-tls", "http2", "json"]}
+rmp-serde = "1.1.2"
+serde = { version = "1.0.215", features = ["derive"] }
+serde_json = "1.0.133"
+serde_with = "3.9.0"
+shell-escape = "0.1.5"
+tokio = { version = "1.39.0", features = ["rt-multi-thread", "macros", "fs", "process"] }
+toml = { version = "0.8.19", features = ["preserve_order"] }
+tracing = "0.1.41"
+tracing-error = "0.2.0"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
+
+[dev-dependencies]
+assert_cmd = "2.0.16"
+predicates = "3.0.4"
+rand = "0.8.5"
+scopeguard = { version = "1.2.0", default-features = false }
+
+[build-dependencies]
+vergen = { version = "8.2.6", features = ["git", "gitcl", "cargo"] }
+
+[target.'cfg(windows)'.dependencies]
+zip = { version = "0.6.6", default-features = false, features = ["deflate"] }
+
+[target.'cfg(unix)'.dependencies]
+flate2 = "1.0.35"
+tar = "0.4.43"
+
+[profile.dev]
+opt-level = 1
+
+[profile.release]
+debug = 1
+
+[profile.release-small]
+inherits = "release"
+lto = "thin"
+opt-level = "s"
+debug = 0
+
+[profile.release-tiny]
+inherits = "release"
+lto = true
+opt-level = "z"
+debug = 0
+codegen-units = 1
+strip = "symbols"
+split-debuginfo = "packed"

@@ -1,0 +1,125 @@
+name: ci
+on:
+  push:
+    branches: [main, rewrite]
+    paths-ignore:
+      - "**.md"
+  pull_request:
+    paths-ignore:
+      - "**.md"
+  workflow_dispatch:
+
+jobs:
+  test-linux:
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: 0
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        run: rustup show
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.6
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+
+      - name: Run Clippy
+        run: cargo build && cargo clippy
+
+      - name: Run tests
+        run: cargo nextest run --release
+
+      - name: Upload debug artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux.stable.debug
+          path: |
+            ./target/debug/mcdl*
+            !./target/debug/mcdl.d
+          retention-days: 7
+
+  test-windows:
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: 0
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        run: rustup show
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.6
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+
+      - name: Run Clippy
+        run: cargo build && cargo clippy
+
+      - name: Run tests
+        run: cargo nextest run --release
+
+      - name: Upload debug artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-msvc.stable.debug
+          path: |
+            ./target/debug/mcdl*
+            !./target/debug/mcdl.d
+          retention-days: 7
+
+  test-macos:
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: 0
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        run: rustup show
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.6
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+
+      - name: Run Clippy
+        run: cargo build && cargo clippy
+
+      - name: Run tests
+        run: cargo nextest run --release
+
+      - name: Upload debug artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos.stable.debug
+          path: |
+            ./target/debug/mcdl*
+            !./target/debug/mcdl.d
+          retention-days: 7
+
+  trigger-build:
+    name: trigger build
+    needs: [test-linux, test-windows]
+    uses: ./.github/workflows/build.yml
+
