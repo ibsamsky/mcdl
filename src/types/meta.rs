@@ -91,7 +91,7 @@ impl InstanceSettings {
     }
 
     #[instrument(err)]
-    pub async fn from_file<P: AsRef<Path> + Debug>(path: P) -> Result<Self> {
+    pub async fn from_file(path: impl AsRef<Path> + Debug) -> Result<Self> {
         debug!("Reading instance settings");
 
         let path = path.as_ref();
@@ -111,7 +111,7 @@ impl InstanceSettings {
     }
 
     #[instrument(err, ret(level = "debug"), skip(self))]
-    pub async fn save<P: AsRef<Path> + Debug>(&self, path: P) -> Result<()> {
+    pub async fn save(&self, path: impl AsRef<Path> + Debug) -> Result<()> {
         debug!("Saving instance settings");
 
         let path = path.as_ref();
@@ -183,7 +183,7 @@ impl AppMeta {
     }
 
     #[instrument(err)]
-    pub fn from_file<P: AsRef<Path> + Debug>(path: P) -> Result<Self> {
+    pub fn from_file(path: impl AsRef<Path> + Debug) -> Result<Self> {
         debug!("Reading meta");
 
         let path = path.as_ref();
@@ -201,7 +201,7 @@ impl AppMeta {
     }
 
     #[instrument(err, ret(level = "debug"), skip(self))]
-    pub fn save_at<P: AsRef<Path> + Debug>(&self, path: P) -> Result<()> {
+    pub fn save_at(&self, path: impl AsRef<Path> + Debug) -> Result<()> {
         debug!("Saving meta");
 
         let path = path.as_ref();
@@ -215,7 +215,7 @@ impl AppMeta {
     }
 
     #[instrument(skip(path))]
-    pub fn read_or_create<P: AsRef<Path> + Debug>(path: P) -> Self {
+    pub fn read_or_create(path: impl AsRef<Path> + Debug) -> Self {
         let path = path.as_ref();
         if let Ok(mut meta) = Self::from_file(path) {
             debug!("Meta read successfully");

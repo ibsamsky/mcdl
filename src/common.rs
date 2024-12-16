@@ -31,8 +31,8 @@ lazy_static! {
             .expect("failed to build reqwest client")
     };
     pub static ref PROJ_DIRS: directories::ProjectDirs =
-        directories::ProjectDirs::from("com.github", "paenis", env!("CARGO_PKG_NAME"))
-            .expect("failed to get project directories");
+        directories::ProjectDirs::from("com.github", "ibsamsky", env!("CARGO_PKG_NAME"))
+            .expect("failed to get project directories (no valid home dir)");
     pub static ref LOG_BASE_DIR: std::path::PathBuf = PROJ_DIRS.data_local_dir().join("log");
     static ref META_PATH: std::path::PathBuf = PROJ_DIRS.data_local_dir().join("meta.mpk");
     pub(crate) static ref META: std::sync::Arc<parking_lot::Mutex<crate::types::meta::AppMeta>> =
