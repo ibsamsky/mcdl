@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::ffi::OsString;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -322,7 +321,7 @@ pub(crate) async fn run_instance(id: VersionNumber) -> Result<()> {
 
     let args_string = args
         .iter()
-        .map(|s| shell_escape::escape(Cow::Borrowed(s.to_str().unwrap())))
+        .map(|s| shell_escape::escape(s.to_str().unwrap().into()))
         .join(" ");
 
     let java_path = get_java_path(jre_version);

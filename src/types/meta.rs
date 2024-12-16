@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
@@ -25,7 +24,7 @@ pub(crate) trait AsArgs {
         // preserve quotes
         self.as_args()
             .iter()
-            .map(|s| shell_escape::escape(Cow::Borrowed(s)))
+            .map(|s| shell_escape::escape(s.into()))
             .join(" ")
     }
 }

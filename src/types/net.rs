@@ -17,15 +17,15 @@ impl<T> CachedResponse<T> {
         SystemTime::now() > self.expires
     }
 
-    // generics are crazy fr
-    pub async fn from_file<P: AsRef<Path>>(path: P) -> Result<Self>
+    pub async fn from_file(path: impl AsRef<Path>) -> Result<Self>
     where Self: for<'de> Deserialize<'de> {
         let data = fs::read(path).await?;
         let cached: CachedResponse<T> = rmp_serde::from_slice(&data)?;
         Ok(cached)
     }
 
-    pub async fn save<P: AsRef<Path>>(&self, path: P) -> Result<()>
+    // TODO: make this return type more meaningful
+    pub async fn save(&self, path: impl AsRef<Path>) -> Result<()>
     where Self: Serialize {
         let data = rmp_serde::to_vec(self)?;
         fs::create_dir_all(path.as_ref().parent().expect("infallible")).await?;

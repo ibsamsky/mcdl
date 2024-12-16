@@ -17,7 +17,7 @@ lazy_static! {
 }
 
 const PISTON_API_URL: &str = "https://piston-meta.mojang.com/";
-const FABRIC_API_URL: &str = "https://meta.fabricmc.net/";
+// const FABRIC_API_URL: &str = "https://meta.fabricmc.net/";
 
 const CACHE_EXPIRATION_TIME: u64 = 60 * 10; // 10 minutes
 
@@ -26,10 +26,10 @@ fn api_path(path: &str) -> String {
     format!("{PISTON_API_URL}{path}")
 }
 
-#[inline]
-fn fabric_api_path(path: &str) -> String {
-    format!("{FABRIC_API_URL}{path}")
-}
+// #[inline]
+// fn fabric_api_path(path: &str) -> String {
+//     format!("{FABRIC_API_URL}{path}")
+// }
 
 #[instrument(err)]
 pub(crate) async fn get_version_manifest() -> Result<GameVersionList> {
