@@ -44,7 +44,7 @@ scopeguard = { version = "1.2.0", default-features = false }
 vergen = { version = "8.2.6", features = ["git", "gitcl", "cargo"] }
 
 [target.'cfg(windows)'.dependencies]
-zip = { version = "0.6.6", default-features = false, features = ["deflate"] }
+zip = { version = "2.2.0", default-features = false, features = ["deflate"] }
 
 [target.'cfg(unix)'.dependencies]
 flate2 = "1.0.35"
