@@ -20,7 +20,7 @@ Please note that this project was started when I was relatively new to Rust, so 
 ### Compiled binaries
 
 Binaries for Linux (amd64 and aarch64), Windows (amd64), and macOS (aarch64, experimental) are available as [Actions artifacts][actions]
-or, if you're not logged in, from [nightly.link][nightly]. If you're not sure which one to use,
+or from [nightly.link][nightly] if you're not logged in. If you're not sure which one to use,
 try `linux.nightly.release` for Linux and `windows-msvc.nightly.release` for Windows.
 
 ### From source
@@ -29,7 +29,7 @@ try `linux.nightly.release` for Linux and `windows-msvc.nightly.release` for Win
 cargo install --git https://github.com/ibsamsky/mcdl
 ```
 
-[actions]: https://github.com/ibsamsky/mcdl/actions?query=is%253Asuccess+workflow%253Aci
+[actions]: https://github.com/ibsamsky/mcdl/actions?query=is%3Asuccess+workflow%3Aci
 [nightly]: https://nightly.link/ibsamsky/mcdl/workflows/test/main
 
 ## Todo (rough)
