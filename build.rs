@@ -1,9 +1,12 @@
-use vergen::EmitBuilder;
+use vergen_gix::{CargoBuilder, Emitter, GixBuilder};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    EmitBuilder::builder()
-        .git_sha(true)
-        .cargo_opt_level()
+    let gitcl = GixBuilder::default().sha(true).build()?;
+    let cargo = CargoBuilder::default().opt_level(true).build()?;
+
+    Emitter::default()
+        .add_instructions(&gitcl)?
+        .add_instructions(&cargo)?
         .emit()?;
     Ok(())
 }

@@ -1,5 +1,5 @@
 use std::ffi::OsString;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use bytes::Bytes;
@@ -476,37 +476,41 @@ mod tests {
 // platform specific stuff
 
 #[cfg(windows)]
-#[instrument(err, ret(level = "debug"), skip(jre))]
-fn extract_jre(jre: Bytes, jre_dir: &PathBuf) -> Result<()> {
-    use std::io::{BufReader, Cursor, Read};
+#[instrument(err, ret(level = "debug"), skip_all, fields(path = %jre_dir.as_ref().display()))]
+fn extract_jre(jre: Bytes, jre_dir: impl AsRef<Path>) -> Result<()> {
+    use std::io::{BufReader, Cursor};
 
     use zip::ZipArchive;
+
+    let jre_dir = jre_dir.as_ref();
 
     std::fs::create_dir_all(jre_dir).wrap_err(format!(
         "Failed to create directory for JRE: {path}",
         path = jre_dir.display()
     ))?;
 
+    // must be Read + Seek
     let reader: BufReader<Cursor<Vec<u8>>> = BufReader::new(Cursor::new(jre.into()));
     let mut archive = ZipArchive::new(reader)?;
 
     for i in 0..archive.len() {
         let mut entry = archive.by_index(i)?;
-        let path = entry.enclosed_name().unwrap();
+        let filepath = entry.enclosed_name().ok_or(eyre!("Invalid file path"))?;
 
         // strip the first directory
-        let path: PathBuf = path.components().skip(1).collect();
-        let path = jre_dir.join(path);
+        let outpath = jre_dir.join(filepath.components().skip(1).collect::<PathBuf>());
 
         if entry.is_dir() {
-            std::fs::create_dir_all(path)?;
+            if outpath.exists() {
+                warn!(path = %outpath.display(), "Clobbering existing file");
+            }
+            std::fs::create_dir_all(outpath)?;
             continue;
         }
 
-        let mut buf = vec![0u8; entry.size() as usize];
-        entry.read_exact(&mut buf)?;
+        let mut outfile = std::fs::File::create(&outpath)?;
 
-        std::fs::write(path, buf)?;
+        std::io::copy(&mut entry, &mut outfile)?;
     }
 
     let java_path = jre_dir.join("bin").join("java.exe");
@@ -522,8 +526,8 @@ fn extract_jre(jre: Bytes, jre_dir: &PathBuf) -> Result<()> {
 }
 
 #[cfg(target_os = "linux")]
-#[instrument(err, ret(level = "debug"), skip(jre))]
-fn extract_jre(jre: Bytes, jre_dir: &PathBuf) -> Result<()> {
+#[instrument(err, ret(level = "debug"), skip_all, fields(path = %jre_dir.as_ref().display()))]
+fn extract_jre(jre: Bytes, jre_dir: impl AsRef<Path>) -> Result<()> {
     use std::os::unix::fs::PermissionsExt;
 
     use bytes::Buf;
@@ -533,6 +537,7 @@ fn extract_jre(jre: Bytes, jre_dir: &PathBuf) -> Result<()> {
     let mut reader = jre.reader();
     let mut archive = Archive::new(GzDecoder::new(&mut reader));
     let entries = archive.entries()?;
+    let jre_dir = jre_dir.as_ref();
 
     std::fs::create_dir_all(jre_dir).wrap_err(format!(
         "Failed to create directory for JRE: {path}",
@@ -541,13 +546,12 @@ fn extract_jre(jre: Bytes, jre_dir: &PathBuf) -> Result<()> {
 
     for entry in entries {
         let mut entry = entry?;
-        let path = entry.path()?;
+        let filepath = entry.path()?;
 
         // strip the first directory
-        let path: PathBuf = path.components().skip(1).collect();
-        let path = jre_dir.join(path);
+        let outpath = jre_dir.join(filepath.components().skip(1).collect::<PathBuf>());
 
-        entry.unpack(path)?;
+        entry.unpack(outpath)?;
     }
 
     let java_path = jre_dir.join("bin").join("java");
