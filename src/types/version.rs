@@ -4,8 +4,8 @@ use std::fmt::Display;
 use std::str::FromStr;
 
 use chrono::{DateTime, FixedOffset};
-use derive_more::derive::{Constructor, IsVariant};
 use derive_more::Display as MoreDisplay;
+use derive_more::derive::{Constructor, IsVariant};
 use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};

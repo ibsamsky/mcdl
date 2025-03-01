@@ -1,9 +1,10 @@
+use std::fmt::Write;
 use std::path::PathBuf;
+use std::sync::LazyLock;
 use std::time::{Duration, SystemTime};
 
 use bytes::Bytes;
-use color_eyre::eyre::{eyre, Result};
-use lazy_static::lazy_static;
+use color_eyre::eyre::{Result, eyre};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, instrument};
@@ -12,9 +13,7 @@ use crate::common::{PROJ_DIRS, REQWEST_CLIENT};
 use crate::types::net::CachedResponse;
 use crate::types::version::{GameVersion, GameVersionList, VersionMetadata};
 
-lazy_static! {
-    static ref CACHE_BASE_DIR: PathBuf = PROJ_DIRS.cache_dir().to_path_buf();
-}
+static CACHE_BASE_DIR: LazyLock<PathBuf> = LazyLock::new(|| PROJ_DIRS.cache_dir().to_path_buf());
 
 const PISTON_API_URL: &str = "https://piston-meta.mojang.com/";
 // const FABRIC_API_URL: &str = "https://meta.fabricmc.net/";
@@ -54,9 +53,7 @@ where T: Serialize + for<'de> Deserialize<'de> {
             if let Ok(elapsed) = cached.expires.duration_since(SystemTime::now()) {
                 let (minutes, seconds) = (elapsed.as_secs() / 60, elapsed.as_secs() % 60);
                 let milis = elapsed.subsec_millis();
-                msg.push_str(&format!(
-                    " expiring in {minutes:02}:{seconds:02}.{milis:03}"
-                ));
+                write!(msg, " expiring in {minutes:02}:{seconds:02}.{milis:03}")?;
             }
             debug!("{msg}");
             return Ok(cached.data);
@@ -82,7 +79,10 @@ pub(crate) async fn download_jre(major_version: &u8) -> Result<Bytes> {
         "https://api.adoptium.net/v3/binary/latest/{feature_version}/{release_type}/{os}/{arch}/{image_type}/{jvm_impl}/{heap_size}/{vendor}",
         feature_version = major_version,
         release_type = "ga",
-        os = match std::env::consts::OS { "macos" => "mac", os => os },
+        os = match std::env::consts::OS {
+            "macos" => "mac",
+            os => os,
+        },
         arch = std::env::consts::ARCH,
         image_type = "jre",
         jvm_impl = "hotspot",

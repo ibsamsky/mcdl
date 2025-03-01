@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use bytes::Bytes;
-use color_eyre::eyre::{self, eyre, Result, WrapErr};
+use color_eyre::eyre::{self, Result, WrapErr, eyre};
 use dialoguer::Confirm;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use itertools::Itertools;
@@ -315,9 +315,9 @@ pub(crate) async fn run_instance(id: VersionNumber) -> Result<()> {
 
     // add all arguments
     let mut args: Vec<OsString> = vec![];
-    args.extend(settings.java.args.iter().map(|s| s.into())); // jvm args
+    args.extend(settings.java.args.iter().map(Into::into)); // jvm args
     args.extend(vec!["-jar".into(), settings.server.jar.into()]); // server jar
-    args.extend(settings.server.args.iter().map(|s| s.into())); // server args
+    args.extend(settings.server.args.iter().map(Into::into)); // server args
 
     let args_string = args
         .iter()

@@ -1,4 +1,5 @@
 //! A tool for managing Minecraft server versions
+#![deny(clippy::all, clippy::pedantic, rust_2018_idioms)]
 
 pub(crate) mod app;
 pub(crate) mod common;
@@ -8,21 +9,19 @@ pub(crate) mod utils;
 use std::fs::File;
 use std::io::IsTerminal;
 use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Mutex, OnceLock};
 
-use async_once::AsyncOnce;
 use chrono::Utc;
 use clap::builder::NonEmptyStringValueParser;
 use clap::error::ErrorKind;
-use clap::{arg, command, Args, CommandFactory, Parser, Subcommand, ValueEnum};
+use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum, arg, command};
 use color_eyre::config::{HookBuilder, Theme};
-use color_eyre::eyre::{eyre, Result, WrapErr};
+use color_eyre::eyre::{Result, WrapErr, eyre};
 use color_eyre::owo_colors::OwoColorize;
 use derive_more::derive::Display;
 use itertools::Itertools;
-use lazy_static::lazy_static;
 use prettytable::format::FormatBuilder;
-use prettytable::{row, Cell, Row, Table};
+use prettytable::{Cell, Row, Table, row};
 use tracing::{debug, info, instrument};
 
 use crate::common::{LOG_BASE_DIR, MCDL_VERSION, META, PROJ_DIRS};
@@ -30,13 +29,7 @@ use crate::types::meta::AsArgs;
 use crate::types::version::{GameVersionList, VersionNumber};
 use crate::utils::net::get_version_manifest;
 
-lazy_static! {
-    static ref MANIFEST: AsyncOnce<GameVersionList> = AsyncOnce::new(async {
-        get_version_manifest()
-            .await
-            .expect("Failed to get version manifest")
-    });
-}
+static MANIFEST: OnceLock<GameVersionList> = OnceLock::new();
 
 /* cli */
 
@@ -151,24 +144,18 @@ enum WhatEnum {
 #[instrument(level = "debug", err, ret)]
 fn validate_version_number(v: &str) -> Result<VersionNumber> {
     // lol
-    let valid_versions: Vec<VersionNumber> =
-        tokio::runtime::Runtime::new().unwrap().block_on(async {
-            MANIFEST
-                .get()
-                .await
-                .versions
-                .iter()
-                .map(|v| v.id.clone())
-                .collect()
-        });
-
     let version = v.parse()?;
 
-    if valid_versions.contains(&version) {
-        Ok(version)
-    } else {
-        Err(eyre!("Version does not exist"))
-    }
+    MANIFEST
+        .get()
+        .expect("manifest not set")
+        .versions
+        .iter()
+        .map(|v| &v.id)
+        .find(|v| v == &&version)
+        .cloned()
+        .map(|_| version)
+        .ok_or(eyre!("Version does not exist"))
 }
 
 /* end cli */
@@ -178,6 +165,10 @@ fn validate_version_number(v: &str) -> Result<VersionNumber> {
 #[instrument(err(Debug), ret)]
 #[tokio::main]
 async fn main() -> Result<()> {
+    MANIFEST
+        .set(get_version_manifest().await?)
+        .map_err(|_| unreachable!("manifest already set"))?;
+
     let args = std::env::args().collect_vec();
 
     let log_name = format!(
@@ -222,7 +213,7 @@ async fn main() -> Result<()> {
 fn install_tracing(path: &PathBuf) -> Result<()> {
     use tracing_error::ErrorLayer;
     use tracing_subscriber::prelude::*;
-    use tracing_subscriber::{fmt, EnvFilter};
+    use tracing_subscriber::{EnvFilter, fmt};
 
     std::fs::create_dir_all(LOG_BASE_DIR.as_path())?;
     let file = File::create(path)?;
@@ -255,7 +246,7 @@ async fn list_impl(filter: Option<ListFilter>, installed: bool) -> Result<()> {
 
     let versions = MANIFEST
         .get()
-        .await
+        .expect("manifest not set")
         .versions
         .iter()
         .filter(|v| {
@@ -360,7 +351,7 @@ async fn list_impl(filter: Option<ListFilter>, installed: bool) -> Result<()> {
 async fn info_impl(version: VersionNumber) -> Result<()> {
     let version = MANIFEST
         .get()
-        .await
+        .expect("manifest not set")
         .versions
         .iter()
         .find(|v| v.id == version)
@@ -382,7 +373,7 @@ async fn info_impl(version: VersionNumber) -> Result<()> {
 
 #[instrument(err, ret(level = "debug"), skip(versions))]
 async fn install_impl(versions: Option<Vec<VersionNumber>>) -> Result<()> {
-    let manifest = MANIFEST.get().await;
+    let manifest = MANIFEST.get().expect("manifest not set");
     let game_versions = &manifest.versions;
     let latest = &manifest.latest;
 

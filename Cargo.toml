@@ -1,9 +1,10 @@
 [package]
 name = "mcdl"
 version = "0.2.5"
-authors = ["Isaac Samsky <191916568+ibsamsky@users.noreply.github.com>"]
+authors = ["Isaac Samsky <github+ibsamsky@cark.moe>"]
 homepage = "https://github.com/ibsamsky/mcdl"
-edition = "2021"
+edition = "2024"
+rust-version = "1.85.0"
 build = "build.rs"
 
 [dependencies]
@@ -12,11 +13,11 @@ bytes = "1.9.0"
 chrono = { version = "0.4.40", features = ["serde"] }
 clap = { version = "4.5.23", features = ["derive"] }
 color-eyre = "0.6.2"
-derive_more = { version = "1.0.0", default-features = false, features = ["constructor", "display", "is_variant"] }
+derive_more = { version = "2.0.1", default-features = false, features = ["constructor", "display", "is_variant"] }
 dialoguer = { version = "0.11.0", default-features = false }
 directories = "6.0.0"
 indicatif = "0.17.9"
-itertools = "0.13.0"
+itertools = "0.14.0"
 lazy_static = "1.5.0"
 parking_lot = "0.12.1"
 paste = "1.0.14"
@@ -37,7 +38,7 @@ tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 [dev-dependencies]
 assert_cmd = "2.0.16"
 predicates = "3.0.4"
-rand = "0.8.5"
+rand = "0.9.0"
 scopeguard = { version = "1.2.0", default-features = false }
 
 [build-dependencies]
