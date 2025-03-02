@@ -1,42 +1,55 @@
-use lazy_static::lazy_static;
+use std::path::PathBuf;
+use std::sync::{Arc, LazyLock};
+use std::time::Duration;
 
-lazy_static! {
-    pub static ref MCDL_VERSION: String = {
-        format!(
-            "{}{}+g{}",
-            env!("CARGO_PKG_VERSION"),
-            match env!("VERGEN_CARGO_OPT_LEVEL") {
-                "1" => "-debug",
-                _ => "",
-            },
-            env!("VERGEN_GIT_SHA"),
-        )
-    };
-    pub static ref REQWEST_CLIENT: reqwest::Client = {
-        let mut headers = reqwest::header::HeaderMap::new();
-        headers.insert(
-            reqwest::header::USER_AGENT,
-            reqwest::header::HeaderValue::from_str(&format!(
-                "mcdl/{} ({})",
-                MCDL_VERSION.as_str(),
-                env!("CARGO_PKG_HOMEPAGE")
-            ))
-            .expect("failed to build user agent header"),
-        );
+use directories::ProjectDirs;
+use parking_lot::Mutex;
+use reqwest::Client;
+use reqwest::header::{self, HeaderMap};
 
-        reqwest::Client::builder()
-            .default_headers(headers)
-            .tcp_keepalive(Some(std::time::Duration::from_secs(10)))
-            .build()
-            .expect("failed to build reqwest client")
-    };
-    pub static ref PROJ_DIRS: directories::ProjectDirs =
-        directories::ProjectDirs::from("com.github", "ibsamsky", env!("CARGO_PKG_NAME"))
-            .expect("failed to get project directories (no valid home dir)");
-    pub static ref LOG_BASE_DIR: std::path::PathBuf = PROJ_DIRS.data_local_dir().join("log");
-    static ref META_PATH: std::path::PathBuf = PROJ_DIRS.data_local_dir().join("meta.mpk");
-    pub(crate) static ref META: std::sync::Arc<parking_lot::Mutex<crate::types::meta::AppMeta>> =
-        std::sync::Arc::new(parking_lot::Mutex::new(
-            crate::types::meta::AppMeta::read_or_create(META_PATH.as_path())
-        ));
-}
+use crate::types::meta::AppMeta;
+
+pub static MCDL_VERSION: LazyLock<String> = LazyLock::new(|| {
+    format!(
+        "{}{}+g{}",
+        env!("CARGO_PKG_VERSION"),
+        match env!("VERGEN_CARGO_OPT_LEVEL") {
+            "1" => "-debug",
+            _ => "",
+        },
+        env!("VERGEN_GIT_SHA"),
+    )
+});
+
+pub static REQWEST_CLIENT: LazyLock<Client> = LazyLock::new(|| {
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        header::USER_AGENT,
+        header::HeaderValue::from_str(&format!(
+            "mcdl/{} ({})",
+            MCDL_VERSION.as_str(),
+            env!("CARGO_PKG_HOMEPAGE")
+        ))
+        .expect("failed to build user agent header"),
+    );
+
+    Client::builder()
+        .default_headers(headers)
+        .tcp_keepalive(Some(Duration::from_secs(10)))
+        .build()
+        .expect("failed to build reqwest client")
+});
+
+pub static PROJ_DIRS: LazyLock<ProjectDirs> = LazyLock::new(|| {
+    ProjectDirs::from("com.github", "ibsamsky", env!("CARGO_PKG_NAME"))
+        .expect("failed to get project directories (no valid home dir)")
+});
+
+pub static LOG_BASE_DIR: LazyLock<PathBuf> =
+    LazyLock::new(|| PROJ_DIRS.data_local_dir().join("log"));
+
+pub static META: LazyLock<Arc<Mutex<AppMeta>>> = LazyLock::new(|| {
+    Arc::new(Mutex::new(AppMeta::read_or_create(
+        PROJ_DIRS.data_local_dir().join("meta.mpk").as_path(),
+    )))
+});

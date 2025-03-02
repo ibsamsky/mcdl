@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 
 use color_eyre::eyre::{Result, WrapErr};
 use itertools::Itertools;
-use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use tokio::fs;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -12,28 +11,28 @@ use tracing::{debug, instrument};
 
 use crate::types::version::VersionNumber;
 
-lazy_static! {
-    static ref DEFAULT_JVM_ARGS: Vec<String> = vec!["-Xms4G".to_string(), "-Xmx4G".to_string()];
-    static ref DEFAULT_SERVER_ARGS: Vec<String> = vec!["--nogui".to_string()];
-}
+const DEFAULT_JVM_ARGS: &[&str] = &["-Xms4G", "-Xmx4G"];
+const DEFAULT_SERVER_ARGS: &[&str] = &["--nogui"];
 
-pub(crate) trait AsArgs {
-    fn as_args(&self) -> Vec<String>;
+pub(crate) trait ToArgs: Sized {
+    fn to_args(self) -> Vec<String>;
 
-    fn as_args_string(&self) -> String {
+    fn to_args_string(self) -> String {
         // preserve quotes
-        self.as_args()
+        self.to_args()
             .iter()
             .map(|s| shell_escape::escape(s.into()))
             .join(" ")
     }
 }
 
-impl<T> AsArgs for T
-where T: Clone + Into<Vec<String>>
+impl<T, S> ToArgs for T
+where
+    T: IntoIterator<Item = S>,
+    S: AsRef<str>,
 {
-    fn as_args(&self) -> Vec<String> {
-        self.clone().into()
+    fn to_args(self) -> Vec<String> {
+        self.into_iter().map(|s| s.as_ref().to_string()).collect()
     }
 }
 
@@ -52,7 +51,7 @@ impl InstanceJavaSettings {
     pub fn new(version: u8) -> Self {
         Self {
             version,
-            args: DEFAULT_JVM_ARGS.as_args(),
+            args: DEFAULT_JVM_ARGS.to_args(),
         }
     }
 }
@@ -69,7 +68,7 @@ impl Default for InstanceServerSettings {
     fn default() -> Self {
         Self {
             jar: PathBuf::from("server.jar"),
-            args: DEFAULT_SERVER_ARGS.as_args(),
+            args: DEFAULT_SERVER_ARGS.to_args(),
         }
     }
 }
@@ -170,7 +169,7 @@ pub(crate) struct AppMeta {
     // keyed by id for now, possibly changed later to allow for multiple instances with the same version
     pub instances: HashMap<String, InstanceMeta>,
     pub installed_jres: HashSet<u8>, // String?
-    _path: PathBuf,
+    path: PathBuf,
 }
 
 impl AppMeta {
@@ -178,7 +177,7 @@ impl AppMeta {
         Self {
             instances: HashMap::new(),
             installed_jres: HashSet::new(),
-            _path: path,
+            path,
         }
     }
 
@@ -197,7 +196,7 @@ impl AppMeta {
     }
 
     pub fn save(&self) -> Result<()> {
-        self.save_at(&self._path)
+        self.save_at(&self.path)
     }
 
     #[instrument(err, ret(level = "debug"), skip(self))]
@@ -219,7 +218,7 @@ impl AppMeta {
         let path = path.as_ref();
         if let Ok(mut meta) = Self::from_file(path) {
             debug!("Meta read successfully");
-            meta._path = path.to_path_buf(); // this shouldn't be necessary, but it's here just in case
+            meta.path = path.to_path_buf(); // this shouldn't be necessary, but it's here just in case
             meta
         } else {
             debug!("Meta not found, creating");

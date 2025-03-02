@@ -1,5 +1,5 @@
 //! A tool for managing Minecraft server versions
-#![deny(clippy::all, clippy::pedantic, rust_2018_idioms)]
+#![warn(clippy::all, clippy::pedantic, rust_2018_idioms)]
 
 pub(crate) mod app;
 pub(crate) mod common;
@@ -25,7 +25,7 @@ use prettytable::{Cell, Row, Table, row};
 use tracing::{debug, info, instrument};
 
 use crate::common::{LOG_BASE_DIR, MCDL_VERSION, META, PROJ_DIRS};
-use crate::types::meta::AsArgs;
+use crate::types::meta::ToArgs;
 use crate::types::version::{GameVersionList, VersionNumber};
 use crate::utils::net::get_version_manifest;
 
@@ -192,7 +192,7 @@ async fn main() -> Result<()> {
         .theme(Theme::new())
         .install()?;
 
-    info!("Args: {}", args.as_args_string());
+    info!("Args: {}", args.to_args_string());
 
     // lol again
     let cli = tokio::task::spawn_blocking(Cli::parse).await?;

@@ -1,5 +1,6 @@
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
+use std::sync::LazyLock;
 use std::time::Duration;
 
 use bytes::Bytes;
@@ -7,7 +8,6 @@ use color_eyre::eyre::{self, Result, WrapErr, eyre};
 use dialoguer::Confirm;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use itertools::Itertools;
-use lazy_static::lazy_static;
 use tokio::fs;
 use tokio::process::Command;
 use tokio::task::JoinSet;
@@ -18,16 +18,16 @@ use crate::types::meta::{InstanceMeta, InstanceSettings};
 use crate::types::version::{GameVersion, VersionMetadata, VersionNumber};
 use crate::utils::net::{download_jre, get_version_metadata};
 
-lazy_static! {
-    static ref INSTANCE_BASE_DIR: PathBuf = PROJ_DIRS.data_local_dir().join("instance");
-    static ref JRE_BASE_DIR: PathBuf = PROJ_DIRS.data_local_dir().join("jre");
-    static ref INSTANCE_SETTINGS_BASE_DIR: PathBuf = PROJ_DIRS.config_local_dir().join("instance");
-    static ref PB_STYLE: ProgressStyle = ProgressStyle::with_template(
-        "{prefix:.bold.blue.bright} {spinner:.green.bright} {wide_msg}",
-    )
-    .unwrap()
-    .tick_chars("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏-");
-}
+static INSTANCE_BASE_DIR: LazyLock<PathBuf> =
+    LazyLock::new(|| PROJ_DIRS.data_local_dir().join("instance"));
+static JRE_BASE_DIR: LazyLock<PathBuf> = LazyLock::new(|| PROJ_DIRS.data_local_dir().join("jre"));
+static INSTANCE_SETTINGS_BASE_DIR: LazyLock<PathBuf> =
+    LazyLock::new(|| PROJ_DIRS.config_local_dir().join("instance"));
+static PB_STYLE: LazyLock<ProgressStyle> = LazyLock::new(|| {
+    ProgressStyle::with_template("{prefix:.bold.blue.bright} {spinner:.green.bright} {wide_msg}")
+        .unwrap()
+        .tick_chars("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏-")
+});
 
 macro_rules! META {
     () => {

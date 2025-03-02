@@ -8,7 +8,6 @@ rust-version = "1.85.0"
 build = "build.rs"
 
 [dependencies]
-async_once = "0.2.6"
 bytes = "1.9.0"
 chrono = { version = "0.4.40", features = ["serde"] }
 clap = { version = "4.5.23", features = ["derive"] }
@@ -18,9 +17,7 @@ dialoguer = { version = "0.11.0", default-features = false }
 directories = "6.0.0"
 indicatif = "0.17.9"
 itertools = "0.14.0"
-lazy_static = "1.5.0"
 parking_lot = "0.12.1"
-paste = "1.0.14"
 prettytable-rs = { version = "0.10.0", default-features = false }
 regex = "1.11.1"
 reqwest = { version = "0.12.9", default-features = false, features = ["charset", "rustls-tls", "http2", "json"]}

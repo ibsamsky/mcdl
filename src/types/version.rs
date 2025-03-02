@@ -2,11 +2,11 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::str::FromStr;
+use std::sync::LazyLock;
 
 use chrono::{DateTime, FixedOffset};
 use derive_more::Display as MoreDisplay;
 use derive_more::derive::{Constructor, IsVariant};
-use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_with::{DeserializeFromStr, SerializeDisplay};
@@ -45,9 +45,8 @@ impl FromStr for ReleaseVersion {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        lazy_static! {
-            static ref RE: Regex = Regex::new(r"^(\d+)\.(\d+)(?:\.(\d+))?$").unwrap();
-        }
+        static RE: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r"^(\d+)\.(\d+)(?:\.(\d+))?$").unwrap());
 
         match RE.captures(s) {
             Some(caps) => Ok(Self::new(
@@ -95,10 +94,8 @@ impl FromStr for PreReleaseVersion {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        lazy_static! {
-            static ref RE: Regex =
-                Regex::new(r"^(\d+)\.(\d+)(?:\.(\d+))?-((?:pre|rc)\d+)$").unwrap();
-        }
+        static RE: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r"^(\d+)\.(\d+)(?:\.(\d+))?-((?:pre|rc)\d+)$").unwrap());
 
         match RE.captures(s) {
             Some(caps) => Ok(Self::new(
@@ -136,9 +133,8 @@ impl FromStr for SnapshotVersion {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        lazy_static! {
-            static ref RE: Regex = Regex::new(r"^(\d{2})w(\d{2})([a-z])$").unwrap();
-        }
+        static RE: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r"^(\d{2})w(\d{2})([a-z])$").unwrap());
 
         match RE.captures(s) {
             Some(caps) => Ok(Self::new(
