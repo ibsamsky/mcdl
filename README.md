@@ -13,7 +13,9 @@ Current features include:
 - Configuration file support for command-line flags passed to the server
   - Generated automatically upon installation and can be edited manually
 
-Please note that this project was started when I was relatively new to Rust, so many of the design decisions and implementations are not optimal/idiomatic. I am in the process of rewriting it to be more in line with best practices.
+Please note that this project was started when I was relatively new to Rust, so many of the design decisions and implementations are not optimal/idiomatic. I am in the process of rewriting it to be more in line with best practices.[^1]
+
+[^1]: Finding the source of this rewrite is left as an exercise for the reader. Once it's mostly complete, it will be merged into this repository.
 
 ## Installation
 
