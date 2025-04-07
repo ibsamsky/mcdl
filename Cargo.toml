@@ -42,7 +42,7 @@ scopeguard = { version = "1.2.0", default-features = false }
 vergen-gix = { version = "1.0.6", features = ["cargo"] }
 
 [target.'cfg(windows)'.dependencies]
-zip = { version = "2.2", default-features = false, features = ["deflate"] }
+zip = { version = "2.6", default-features = false, features = ["deflate"] }
 
 [target.'cfg(unix)'.dependencies]
 flate2 = "1.0.35"
