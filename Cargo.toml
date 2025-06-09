@@ -11,7 +11,7 @@ build = "build.rs"
 bytes = "1.9.0"
 chrono = { version = "0.4.40", features = ["serde"] }
 clap = { version = "4.5.39", features = ["derive"] }
-color-eyre = "0.6.2"
+color-eyre = "0.6.5"
 derive_more = { version = "2.0.1", default-features = false, features = ["constructor", "display", "is_variant"] }
 dialoguer = { version = "0.11.0", default-features = false }
 directories = "6.0.0"
