@@ -114,9 +114,9 @@ mod tests {
     #[tokio::test]
     async fn test_get_version_metadata() {
         let manifest = get_version_manifest().await.unwrap();
-        let version = manifest.versions.get(0).unwrap();
+        let version = manifest.versions.first().unwrap();
         let metadata = get_version_metadata(version).await.unwrap();
-        assert!(metadata.downloads.get("server").is_some());
+        assert!(metadata.downloads.contains_key("server"));
     }
 
     #[tokio::test]
@@ -126,7 +126,19 @@ mod tests {
             _ => 8,
         };
 
-        let jre = download_jre(&version).await.unwrap();
-        assert!(!jre.is_empty());
+        let mut tries = 0;
+        while tries < 3 {
+            match download_jre(&version).await {
+                Ok(jre) => {
+                    assert!(!jre.is_empty());
+                    break;
+                }
+                Err(e) => {
+                    eprintln!("Failed to download JRE: {e}");
+                    tries += 1;
+                }
+            }
+        }
+        assert!(tries < 3, "Failed to download JRE after 3 attempts");
     }
 }
