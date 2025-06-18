@@ -432,47 +432,6 @@ pub(crate) fn locate(what: &String) -> Result<()> {
     Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    #[cfg(not(target_os = "macos"))]
-    async fn test_install_jre() {
-        let version = match std::env::consts::OS {
-            "macos" => 11, // Adoptium doesn't have JRE 8 for aarch64 macOS
-            _ => 8,
-        };
-
-        // remove the jre directory if the test panics
-        scopeguard::defer! {
-            let path = JRE_BASE_DIR.join(version.to_string());
-
-            if path.exists() {
-                std::fs::remove_dir_all(path).unwrap();
-            }
-
-            META!().remove_jre(&version);
-            META!().save().unwrap();
-        }
-
-        assert!(
-            !META!().jre_installed(&version),
-            "JRE 8 is already installed"
-        );
-
-        install_jre(&version, &ProgressBar::hidden()).await.unwrap();
-
-        assert!(
-            get_java_path(version.clone()).exists(),
-            "{:?} does not exist",
-            get_java_path(8)
-        );
-        assert!(META!().remove_jre(&version), "Failed to remove JRE");
-        assert!(META!().save().is_ok(), "Failed to save metadata");
-    }
-}
-
 // platform specific stuff
 
 #[cfg(windows)]
@@ -582,4 +541,45 @@ fn get_java_path(version: u8) -> PathBuf {
         .join(version.to_string())
         .join("bin")
         .join(format!("java{}", std::env::consts::EXE_SUFFIX))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    #[cfg(not(target_os = "macos"))]
+    async fn test_install_jre() {
+        let version = match std::env::consts::OS {
+            "macos" => 11, // Adoptium doesn't have JRE 8 for aarch64 macOS
+            _ => 8,
+        };
+
+        // remove the jre directory if the test panics
+        scopeguard::defer! {
+            let path = JRE_BASE_DIR.join(version.to_string());
+
+            if path.exists() {
+                std::fs::remove_dir_all(path).unwrap();
+            }
+
+            META!().remove_jre(&version);
+            META!().save().unwrap();
+        }
+
+        assert!(
+            !META!().jre_installed(&version),
+            "JRE 8 is already installed"
+        );
+
+        install_jre(&version, &ProgressBar::hidden()).await.unwrap();
+
+        assert!(
+            get_java_path(version).exists(),
+            "{:?} does not exist",
+            get_java_path(version)
+        );
+        assert!(META!().remove_jre(&version), "Failed to remove JRE");
+        assert!(META!().save().is_ok(), "Failed to save metadata");
+    }
 }
