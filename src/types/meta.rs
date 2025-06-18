@@ -265,18 +265,12 @@ impl AppMeta {
 
 #[cfg(test)]
 mod tests {
-    use rand::distr::{Alphanumeric, SampleString};
-
     use super::*;
 
     #[tokio::test]
     async fn read_write_settings() {
-        let suf: String = Alphanumeric.sample_string(&mut rand::rng(), 5);
-        let path = PathBuf::from(format!("settings-{suf}.toml"));
-
-        scopeguard::defer! {
-            std::fs::remove_file(&path).unwrap();
-        }
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.toml");
 
         let settings = InstanceSettings::new(8);
         settings.save(&path).await.unwrap();
@@ -286,7 +280,7 @@ mod tests {
             settings.java.args,
             DEFAULT_JVM_ARGS
                 .iter()
-                .map(|s| s.to_string())
+                .map(ToString::to_string)
                 .collect::<Vec<String>>()
         );
         assert_eq!(settings.server.jar, PathBuf::from("server.jar"));
@@ -296,8 +290,8 @@ mod tests {
     #[tokio::test]
     #[should_panic = "Error reading settings at settings-"]
     async fn read_settings_nonexistent() {
-        let suf: String = Alphanumeric.sample_string(&mut rand::rng(), 5);
-        let path = PathBuf::from(format!("settings-{suf}.toml"));
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.toml");
 
         let _settings = InstanceSettings::from_file(&path).await.unwrap();
     }
@@ -305,12 +299,8 @@ mod tests {
     #[tokio::test]
     #[should_panic = "TOML parse error"]
     async fn read_settings_invalid() {
-        let suf: String = Alphanumeric.sample_string(&mut rand::rng(), 5);
-        let path = PathBuf::from(format!("settings-{suf}.toml"));
-
-        scopeguard::defer! {
-            std::fs::remove_file(&path).unwrap();
-        }
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.toml");
 
         fs::write(&path, "invalid").await.unwrap();
         let _settings = InstanceSettings::from_file(&path).await.unwrap();
