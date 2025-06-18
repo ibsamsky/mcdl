@@ -14,8 +14,6 @@ jobs:
     env:
       CARGO_TERM_COLOR: always
       CARGO_INCREMENTAL: 0
-      SCCACHE_GHA_ENABLED: "true"
-      RUSTC_WRAPPER: "sccache"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -24,18 +22,13 @@ jobs:
       - name: Install Rust
         run: rustup show
 
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.9
-
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: nextest
+      - uses: Swatinem/rust-cache@v2
 
       - name: Run Clippy
         run: cargo build && cargo clippy
 
       - name: Run tests
-        run: cargo nextest run --release
+        run: cargo test -r
 
       - name: Upload debug artifacts
         uses: actions/upload-artifact@v4
@@ -50,8 +43,6 @@ jobs:
     env:
       CARGO_TERM_COLOR: always
       CARGO_INCREMENTAL: 0
-      SCCACHE_GHA_ENABLED: "true"
-      RUSTC_WRAPPER: "sccache"
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -60,18 +51,13 @@ jobs:
       - name: Install Rust
         run: rustup show
 
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.9
-
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: nextest
+      - uses: Swatinem/rust-cache@v2
 
       - name: Run Clippy
         run: cargo build && cargo clippy
 
       - name: Run tests
-        run: cargo nextest run --release
+        run: cargo test -r
 
       - name: Upload debug artifacts
         uses: actions/upload-artifact@v4
@@ -86,8 +72,6 @@ jobs:
     env:
       CARGO_TERM_COLOR: always
       CARGO_INCREMENTAL: 0
-      SCCACHE_GHA_ENABLED: "true"
-      RUSTC_WRAPPER: "sccache"
     runs-on: macos-latest
     steps:
       - name: Checkout
@@ -96,18 +80,13 @@ jobs:
       - name: Install Rust
         run: rustup show
 
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.9
-
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: nextest
+      - uses: Swatinem/rust-cache@v2
 
       - name: Run Clippy
         run: cargo build && cargo clippy
 
       - name: Run tests
-        run: cargo nextest run --release
+        run: cargo test -r
 
       - name: Upload debug artifacts
         uses: actions/upload-artifact@v4

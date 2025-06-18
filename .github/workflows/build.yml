@@ -8,8 +8,6 @@ jobs:
     env:
       CARGO_TERM_COLOR: always
       CARGO_INCREMENTAL: 0
-      SCCACHE_GHA_ENABLED: "true"
-      RUSTC_WRAPPER: "sccache"
       BUILD_DIR: ${{ matrix.profile != 'dev' && matrix.profile || 'debug' }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -30,8 +28,7 @@ jobs:
       - name: Install Toolchain
         uses: dtolnay/rust-toolchain@nightly
 
-      - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.9
+      - uses: Swatinem/rust-cache@v2
 
       - name: Build
         run: cargo build --verbose --profile ${{ matrix.profile }}
