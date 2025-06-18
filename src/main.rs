@@ -15,7 +15,6 @@ use chrono::Utc;
 use clap::builder::NonEmptyStringValueParser;
 use clap::error::ErrorKind;
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum, arg, command};
-use color_eyre::config::{HookBuilder, Theme};
 use color_eyre::eyre::{Result, WrapErr, eyre};
 use color_eyre::owo_colors::OwoColorize;
 use derive_more::derive::Display;
@@ -187,9 +186,10 @@ async fn main() -> Result<()> {
     info!("Logging to {}", log_path.display());
 
     // install color_eyre
-    HookBuilder::default()
+    #[cfg(not(test))]
+    color_eyre::config::HookBuilder::default()
         .display_env_section(true)
-        .theme(Theme::new())
+        .theme(color_eyre::config::Theme::new())
         .install()?;
 
     info!("Args: {}", args.to_args_string());
