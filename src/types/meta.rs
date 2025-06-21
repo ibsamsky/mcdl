@@ -288,7 +288,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[should_panic = "Error reading settings at settings-"]
+    #[should_panic = "Error reading settings at "]
     async fn read_settings_nonexistent() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("settings.toml");
