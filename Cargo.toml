@@ -45,7 +45,7 @@ vergen-gix = { version = "1.0.9", features = ["cargo"] }
 zip = { version = "2.4", default-features = false, features = ["deflate"] }
 
 [target.'cfg(unix)'.dependencies]
-flate2 = "1.1.2"
+flate2 = "1.1.4"
 tar = "0.4.44"
 
 [profile.dev]
