@@ -33,7 +33,7 @@ jobs:
         run: cargo test
 
       - name: Upload debug artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: linux.stable.debug
           path: |
@@ -64,7 +64,7 @@ jobs:
         run: cargo test
 
       - name: Upload debug artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: windows-msvc.stable.debug
           path: |
@@ -95,7 +95,7 @@ jobs:
         run: cargo test
 
       - name: Upload debug artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: macos.stable.debug
           path: |
