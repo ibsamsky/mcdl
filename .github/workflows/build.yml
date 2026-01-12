@@ -36,7 +36,7 @@ jobs:
         run: cargo build --verbose --profile ${{ matrix.profile }}
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.build }}.nightly.${{ matrix.profile }}
           path: |
@@ -75,7 +75,7 @@ jobs:
         run: cross build --verbose --target ${{ matrix.target }} --profile ${{ matrix.profile }}
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.build }}.nightly.${{ matrix.profile }}
           path: |
