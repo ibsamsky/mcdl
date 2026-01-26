@@ -42,7 +42,7 @@ tempfile = "3.23.0"
 vergen-gix = { version = "1.0.9", features = ["cargo"] }
 
 [target.'cfg(windows)'.dependencies]
-zip = { version = "2.4", default-features = false, features = ["deflate"] }
+zip = { version = "7.2", default-features = false, features = ["deflate"] }
 
 [target.'cfg(unix)'.dependencies]
 flate2 = "1.1.5"
