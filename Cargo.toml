@@ -17,7 +17,7 @@ dialoguer = { version = "0.12.0", default-features = false }
 directories = "6.0.0"
 indicatif = "0.18.3"
 itertools = "0.14.0"
-lazy-regex = "3.4.2"
+lazy-regex = "3.6.0"
 parking_lot = "0.12.5"
 prettytable-rs = { version = "0.10.0", default-features = false }
 reqwest = { version = "0.12.28", default-features = false, features = ["charset", "rustls-tls", "http2", "json"]}
