@@ -164,6 +164,13 @@ fn validate_version_number(v: &str) -> Result<VersionNumber> {
 #[instrument(err(Debug), ret)]
 #[tokio::main]
 async fn main() -> Result<()> {
+    // install color_eyre before any fallible startup code can create an `eyre::Report`
+    #[cfg(not(test))]
+    color_eyre::config::HookBuilder::default()
+        .display_env_section(true)
+        .theme(color_eyre::config::Theme::new())
+        .install()?;
+
     MANIFEST
         .set(get_version_manifest().await?)
         .map_err(|_| unreachable!("manifest already set"))?;
@@ -184,13 +191,6 @@ async fn main() -> Result<()> {
     // set up tracing
     install_tracing(&log_path)?;
     info!("Logging to {}", log_path.display());
-
-    // install color_eyre
-    #[cfg(not(test))]
-    color_eyre::config::HookBuilder::default()
-        .display_env_section(true)
-        .theme(color_eyre::config::Theme::new())
-        .install()?;
 
     info!("Args: {}", args.to_args_string());
 

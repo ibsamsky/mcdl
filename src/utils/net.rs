@@ -47,17 +47,17 @@ pub(crate) async fn get_version_metadata(version: &GameVersion) -> Result<Versio
 #[instrument(err)] // ret is huge
 pub(crate) async fn get_maybe_cached<T>(url: &str, cache_file: &PathBuf) -> Result<T>
 where T: Serialize + for<'de> Deserialize<'de> {
-    if let Ok(cached) = CachedResponse::<T>::from_file(&cache_file).await {
-        if !cached.is_expired() {
-            let mut msg = "Using cached response".to_string();
-            if let Ok(elapsed) = cached.expires.duration_since(SystemTime::now()) {
-                let (minutes, seconds) = (elapsed.as_secs() / 60, elapsed.as_secs() % 60);
-                let milis = elapsed.subsec_millis();
-                write!(msg, " expiring in {minutes:02}:{seconds:02}.{milis:03}")?;
-            }
-            debug!("{msg}");
-            return Ok(cached.data);
+    if let Ok(cached) = CachedResponse::<T>::from_file(&cache_file).await
+        && !cached.is_expired()
+    {
+        let mut msg = "Using cached response".to_string();
+        if let Ok(elapsed) = cached.expires.duration_since(SystemTime::now()) {
+            let (minutes, seconds) = (elapsed.as_secs() / 60, elapsed.as_secs() % 60);
+            let milis = elapsed.subsec_millis();
+            write!(msg, " expiring in {minutes:02}:{seconds:02}.{milis:03}")?;
         }
+        debug!("{msg}");
+        return Ok(cached.data);
     }
 
     debug!("Downloading fresh data");
