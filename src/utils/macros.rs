@@ -76,6 +76,6 @@ mod tests {
         assert_eq!(
             "1234567".parse::<MyEnum>().unwrap(),
             MyEnum::C("1234567".to_string())
-        )
+        );
     }
 }

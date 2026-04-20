@@ -74,7 +74,7 @@ where T: Serialize + for<'de> Deserialize<'de> {
 }
 
 #[instrument(err)]
-pub(crate) async fn download_jre(major_version: &u8) -> Result<Bytes> {
+pub(crate) async fn download_jre(major_version: u8) -> Result<Bytes> {
     let url = format!(
         "https://api.adoptium.net/v3/binary/latest/{feature_version}/{release_type}/{os}/{arch}/{image_type}/{jvm_impl}/{heap_size}/{vendor}",
         feature_version = major_version,
@@ -128,7 +128,7 @@ mod tests {
 
         let mut tries = 0;
         while tries < 3 {
-            match download_jre(&version).await {
+            match download_jre(version).await {
                 Ok(jre) => {
                     assert!(!jre.is_empty());
                     break;
