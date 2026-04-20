@@ -151,7 +151,7 @@ pub(crate) async fn install_versions(versions: Vec<&GameVersion>) -> Result<()> 
         });
 
         // if the JRE is already installed, skip it
-        if META!().jre_installed(&jre_version) || jres_installed.contains(&jre_version) {
+        if META!().jre_installed(jre_version) || jres_installed.contains(&jre_version) {
             debug!(
                 jre = jre_version,
                 version = version_display,
@@ -179,7 +179,7 @@ pub(crate) async fn install_versions(versions: Vec<&GameVersion>) -> Result<()> 
         // at the same time, spawn a thread to install the JRE
         install_threads.spawn(async move {
             pb_jre.set_message("Installing JRE...");
-            install_jre(&jre_version, &pb_jre)
+            install_jre(jre_version, &pb_jre)
                 .await
                 .wrap_err(format!("Failed to install JRE {jre_version}"))?;
 
@@ -201,7 +201,7 @@ pub(crate) async fn install_versions(versions: Vec<&GameVersion>) -> Result<()> 
 // }
 
 #[instrument(err, ret(level = "debug"), skip(pb))]
-async fn install_jre(major_version: &u8, pb: &ProgressBar) -> Result<()> {
+async fn install_jre(major_version: u8, pb: &ProgressBar) -> Result<()> {
     let jre_dir = JRE_BASE_DIR.join(major_version.to_string());
 
     if META!().jre_installed(major_version) {
@@ -221,7 +221,7 @@ async fn install_jre(major_version: &u8, pb: &ProgressBar) -> Result<()> {
     info!("Extracted JRE");
 
     pb.set_message("Updating metadata...");
-    META!().add_jre(*major_version);
+    META!().add_jre(major_version);
     META!().save()?;
 
     pb.finish_with_message("Done!");
@@ -295,14 +295,14 @@ pub(crate) async fn run_instance(id: VersionNumber) -> Result<()> {
     // check if the JRE is installed and install it if not
     let jre_version = settings.java.version;
 
-    if !META!().jre_installed(&jre_version) {
+    if !META!().jre_installed(jre_version) {
         debug!(jre = jre_version, "Installing JRE due to config change");
         let pb = ProgressBar::new_spinner()
             .with_style(PB_STYLE.clone())
             .with_prefix(format!("JRE {jre_version} for {id}"));
         pb.enable_steady_tick(Duration::from_millis(100));
 
-        install_jre(&jre_version, &pb).await?;
+        install_jre(jre_version, &pb).await?;
     }
 
     // make sure JRE version is correct
@@ -563,23 +563,23 @@ mod tests {
                 std::fs::remove_dir_all(path).unwrap();
             }
 
-            META!().remove_jre(&version);
+            META!().remove_jre(version);
             META!().save().unwrap();
         }
 
         assert!(
-            !META!().jre_installed(&version),
+            !META!().jre_installed(version),
             "JRE 8 is already installed"
         );
 
-        install_jre(&version, &ProgressBar::hidden()).await.unwrap();
+        install_jre(version, &ProgressBar::hidden()).await.unwrap();
 
         assert!(
             get_java_path(version).exists(),
             "{:?} does not exist",
             get_java_path(version)
         );
-        assert!(META!().remove_jre(&version), "Failed to remove JRE");
+        assert!(META!().remove_jre(version), "Failed to remove JRE");
         assert!(META!().save().is_ok(), "Failed to save metadata");
     }
 }
