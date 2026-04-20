@@ -252,14 +252,14 @@ impl AppMeta {
     }
 
     #[instrument(skip(self))]
-    pub fn remove_jre(&mut self, jre: &u8) -> bool {
+    pub fn remove_jre(&mut self, jre: u8) -> bool {
         debug!("Removing JRE");
-        self.installed_jres.remove(jre)
+        self.installed_jres.remove(&jre)
     }
 
     #[instrument(skip(self))]
-    pub fn jre_installed(&self, jre: &u8) -> bool {
-        self.installed_jres.contains(jre)
+    pub fn jre_installed(&self, jre: u8) -> bool {
+        self.installed_jres.contains(&jre)
     }
 }
 
