@@ -14,7 +14,7 @@ use std::sync::{Mutex, OnceLock};
 use chrono::Utc;
 use clap::builder::NonEmptyStringValueParser;
 use clap::error::ErrorKind;
-use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum, arg, command};
+use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use color_eyre::eyre::{Result, WrapErr, eyre};
 use color_eyre::owo_colors::OwoColorize;
 use derive_more::derive::Display;
@@ -164,6 +164,13 @@ fn validate_version_number(v: &str) -> Result<VersionNumber> {
 #[instrument(err(Debug), ret)]
 #[tokio::main]
 async fn main() -> Result<()> {
+    // install color_eyre before any fallible startup code can create an `eyre::Report`
+    #[cfg(not(test))]
+    color_eyre::config::HookBuilder::default()
+        .display_env_section(true)
+        .theme(color_eyre::config::Theme::new())
+        .install()?;
+
     MANIFEST
         .set(get_version_manifest().await?)
         .map_err(|_| unreachable!("manifest already set"))?;
@@ -184,13 +191,6 @@ async fn main() -> Result<()> {
     // set up tracing
     install_tracing(&log_path)?;
     info!("Logging to {}", log_path.display());
-
-    // install color_eyre
-    #[cfg(not(test))]
-    color_eyre::config::HookBuilder::default()
-        .display_env_section(true)
-        .theme(color_eyre::config::Theme::new())
-        .install()?;
 
     info!("Args: {}", args.to_args_string());
 
@@ -331,7 +331,7 @@ async fn list_impl(filter: Option<ListFilter>, installed: bool) -> Result<()> {
         for version in versions {
             table.add_row(Row::new(vec![
                 Cell::new(&version.id.to_string()),
-                Cell::new(&version.release_type.to_string()).style_spec(
+                Cell::new(&version.release_type.clone()).style_spec(
                     match version.release_type.as_str() {
                         "release" => "Fgb",
                         _ => "",
