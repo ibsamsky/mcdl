@@ -33,7 +33,7 @@ tracing-error = "0.2.1"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 
 [dev-dependencies]
-assert_cmd = "2.2.1"
+assert_cmd = "2.2.2"
 predicates = "3.1.4"
 scopeguard = { version = "1.2.0", default-features = false }
 tempfile = "3.27.0"
