@@ -9,95 +9,84 @@ on:
       - "**.md"
   workflow_dispatch:
 
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  RUST_BACKTRACE: short
+  RUSTUP_MAX_RETRIES: 10
+
 jobs:
-  test-linux:
-    env:
-      CARGO_TERM_COLOR: always
-      CARGO_INCREMENTAL: 0
+  check:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Install Rust
-        run: rustup show
-
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: rustfmt
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
 
-      - name: Run Clippy
-        run: cargo build && cargo clippy
+      - name: Run cargo check
+        run: cargo check --all-targets
 
-      - name: Run tests
-        run: cargo test
+      - name: Run fmt check
+        run: cargo fmt --all -- --check
 
-      - name: Upload debug artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: linux.stable.debug
-          path: |
-            ./target/debug/mcdl*
-            !./target/debug/mcdl.d
-          retention-days: 7
-
-  test-windows:
-    env:
-      CARGO_TERM_COLOR: always
-      CARGO_INCREMENTAL: 0
-    runs-on: windows-latest
+  clippy:
+    needs: check
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Install Rust
-        run: rustup show
-
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
 
       - name: Run Clippy
-        run: cargo build && cargo clippy
+        run: cargo clippy --all-targets
 
-      - name: Run tests
-        run: cargo test
-
-      - name: Upload debug artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: windows-msvc.stable.debug
-          path: |
-            ./target/debug/mcdl*
-            !./target/debug/mcdl.d
-          retention-days: 7
-
-  test-macos:
-    env:
-      CARGO_TERM_COLOR: always
-      CARGO_INCREMENTAL: 0
-    runs-on: macos-latest
+  test:
+    name: test ${{ matrix.name }}
+    needs: check
+    continue-on-error: ${{ !matrix.required }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: linux
+            os: ubuntu-latest
+            artifact_name: linux.stable.debug
+            required: true
+          - name: windows
+            os: windows-latest
+            artifact_name: windows-msvc.stable.debug
+            required: true
+          - name: macos
+            os: macos-latest
+            artifact_name: macos.stable.debug
+            required: false
+    runs-on: ${{ matrix.os }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Install Rust
-        run: rustup show
-
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
 
-      - name: Run Clippy
-        run: cargo build && cargo clippy
+      - name: Install nextest
+        uses: taiki-e/install-action@nextest
 
       - name: Run tests
-        run: cargo test
+        run: cargo nextest run --profile ci
 
       - name: Upload debug artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: macos.stable.debug
+          name: ${{ matrix.artifact_name }}
           path: |
             ./target/debug/mcdl*
             !./target/debug/mcdl.d
@@ -105,6 +94,5 @@ jobs:
 
   trigger-build:
     name: trigger build
-    needs: [test-linux, test-windows]
+    needs: [test]
     uses: ./.github/workflows/build.yml
-

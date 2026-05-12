@@ -2,12 +2,17 @@ name: build artifacts
 run-name: build artifacts for ${{ github.ref_name }}@${{ github.sha }}
 on: [workflow_call, workflow_dispatch]
 
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  RUST_BACKTRACE: short
+  RUSTUP_MAX_RETRIES: 10
+
 jobs:
   build:
     name: build ${{ matrix.profile }} for ${{ matrix.build }}
     env:
-      CARGO_TERM_COLOR: always
-      CARGO_INCREMENTAL: 0
       BUILD_DIR: ${{ matrix.profile != 'dev' && matrix.profile || 'debug' }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -22,12 +27,8 @@ jobs:
           - build: windows-msvc
             os: windows-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Install Toolchain
-        uses: dtolnay/rust-toolchain@nightly
-
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@nightly
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
@@ -47,8 +48,6 @@ jobs:
     needs: [build] # wait for normal builds (faster)
     name: build ${{ matrix.profile }} for ${{ matrix.build }}
     env:
-      CARGO_TERM_COLOR: always
-      CARGO_INCREMENTAL: 0
       BUILD_DIR: ${{ matrix.profile != 'dev' && matrix.profile || 'debug' }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -62,12 +61,8 @@ jobs:
             os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Install Toolchain
-        uses: dtolnay/rust-toolchain@nightly
-
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@nightly
       - name: Use Cross
         run: cargo install cross
 
