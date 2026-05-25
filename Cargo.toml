@@ -20,10 +20,10 @@ itertools = "0.14.0"
 lazy-regex = "3.6.0"
 parking_lot = "0.12.5"
 prettytable-rs = { version = "0.10.0", default-features = false }
-reqwest = { version = "0.13.3", features = ["form", "http2", "json"] }
+reqwest = { version = "0.13.4", features = ["form", "http2", "json"] }
 rmp-serde = "1.3.1"
 serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.149"
+serde_json = "1.0.150"
 serde_with = "3.20.0"
 shell-escape = "0.1.5"
 tokio = { version = "1.52.3", features = ["rt-multi-thread", "macros", "fs", "process"] }
