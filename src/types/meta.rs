@@ -1,15 +1,23 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, LazyLock};
 
 use color_eyre::eyre::{Result, WrapErr};
-use itertools::Itertools;
+use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use tokio::fs;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tracing::{debug, instrument};
 
+use crate::paths::PROJ_DIRS;
 use crate::types::version::VersionNumber;
+
+pub(crate) static META: LazyLock<Arc<Mutex<AppMeta>>> = LazyLock::new(|| {
+    Arc::new(Mutex::new(AppMeta::read_or_create(
+        PROJ_DIRS.data_local_dir().join("meta.mpk").as_path(),
+    )))
+});
 
 const DEFAULT_JVM_ARGS: &[&str] = &["-Xms4G", "-Xmx4G"];
 const DEFAULT_SERVER_ARGS: &[&str] = &["--nogui"];
@@ -22,6 +30,7 @@ pub(crate) trait ToArgs: Sized {
         self.to_args()
             .iter()
             .map(|s| shell_escape::escape(s.into()))
+            .collect::<Vec<_>>()
             .join(" ")
     }
 }

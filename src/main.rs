@@ -2,7 +2,9 @@
 #![warn(clippy::all, clippy::pedantic, rust_2018_idioms)]
 
 pub(crate) mod app;
-pub(crate) mod common;
+pub(crate) mod cli;
+pub(crate) mod jre;
+pub(crate) mod paths;
 pub(crate) mod types;
 pub(crate) mod utils;
 
@@ -12,152 +14,21 @@ use std::path::PathBuf;
 use std::sync::{Mutex, OnceLock};
 
 use chrono::Utc;
-use clap::builder::NonEmptyStringValueParser;
 use clap::error::ErrorKind;
-use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
+use clap::{CommandFactory, Parser};
 use color_eyre::eyre::{Result, WrapErr, eyre};
 use color_eyre::owo_colors::OwoColorize;
-use derive_more::derive::Display;
-use itertools::Itertools;
 use prettytable::format::FormatBuilder;
 use prettytable::{Cell, Row, Table, row};
 use tracing::{debug, info, instrument};
 
-use crate::common::{LOG_BASE_DIR, MCDL_VERSION, META, PROJ_DIRS};
-use crate::types::meta::ToArgs;
+use crate::cli::{Action, Cli, ListFilter, WhatEnum};
+use crate::paths::{LOG_BASE_DIR, PROJ_DIRS};
+use crate::types::meta::{META, ToArgs};
 use crate::types::version::{GameVersionList, VersionNumber};
 use crate::utils::net::get_version_manifest;
 
-static MANIFEST: OnceLock<GameVersionList> = OnceLock::new();
-
-/* cli */
-
-#[doc(hidden)]
-#[derive(Parser, Debug)]
-#[command(author, version = MCDL_VERSION.as_str())]
-#[command(arg_required_else_help = true, subcommand_required = true)]
-/// A tool for managing Minecraft server versions
-struct Cli {
-    #[command(subcommand)]
-    action: Action,
-}
-
-#[doc(hidden)]
-#[derive(Subcommand, Debug)]
-enum Action {
-    /// List available Minecraft versions
-    List {
-        #[command(flatten)]
-        filter: Option<ListFilter>,
-        #[arg(short, long)]
-        /// List installed instances and their versions
-        installed: bool,
-    },
-    /// Get information about a Minecraft version
-    Info {
-        #[arg(required = true, value_parser = |s: &str| validate_version_number(s))]
-        #[arg(short, long)]
-        /// The Minecraft version to get information about
-        version: VersionNumber,
-    },
-    /// Install a server instance
-    Install {
-        #[arg(value_delimiter = ',', num_args = 0.., value_parser = |s: &str| validate_version_number(s))]
-        #[arg(short, long)]
-        /// The version(s) to install
-        ///
-        /// Defaults to latest release version if none is provided.
-        /// Can be specified multiple times, or as a comma or space-separated list.
-        version: Option<Vec<VersionNumber>>,
-        // #[arg(short, long)]
-        // name: Option<String>,
-    },
-    /// Uninstall a server instance
-    Uninstall {
-        #[arg(required = true, value_parser = NonEmptyStringValueParser::new())]
-        #[arg(short, long)]
-        version: String, // in the future, `name` will be used instead
-    },
-    /// Run a server instance
-    Run {
-        #[arg(required = true, value_parser = NonEmptyStringValueParser::new())]
-        #[arg(short, long)]
-        /// The version to run
-        version: String, // in the future, `name` will be used instead
-    },
-    /// Print the path to a config file or instance directory
-    Locate {
-        #[arg(required = true)]
-        #[arg(value_enum)]
-        /// The file or directory to locate
-        what: WhatEnum,
-    },
-}
-
-#[doc(hidden)]
-#[derive(Args, Debug)]
-#[group(id = "filter", required = false, multiple = false)]
-struct ListFilter {
-    #[arg(short, long)]
-    /// Only list release versions (default)
-    release: bool,
-    #[arg(short, long)]
-    /// Only list pre-release versions
-    pre_release: bool,
-    #[arg(short, long)]
-    /// Only list snapshot versions
-    snapshot: bool,
-    #[arg(short, long)]
-    /// Only list other versions
-    other: bool,
-    #[arg(short, long)]
-    /// List all versions
-    all: bool,
-}
-
-impl Default for ListFilter {
-    fn default() -> Self {
-        Self {
-            release: true,
-            pre_release: false,
-            snapshot: false,
-            other: false,
-            all: false,
-        }
-    }
-}
-
-#[doc(hidden)]
-#[derive(Clone, Copy, ValueEnum, Debug, Display)]
-enum WhatEnum {
-    /// The Java Runtime Environment directory
-    Java,
-    /// The directory containing Minecraft server instances
-    Instance,
-    /// The directory containing configuration files
-    Config,
-    /// The directory containing logs
-    Log,
-}
-
-#[instrument(level = "debug", err, ret)]
-fn validate_version_number(v: &str) -> Result<VersionNumber> {
-    // lol
-    let version = v.parse()?;
-
-    MANIFEST
-        .get()
-        .expect("manifest not set")
-        .versions
-        .iter()
-        .map(|v| &v.id)
-        .find(|v| v == &&version)
-        .cloned()
-        .map(|_| version)
-        .ok_or(eyre!("Version does not exist"))
-}
-
-/* end cli */
+pub(crate) static MANIFEST: OnceLock<GameVersionList> = OnceLock::new();
 
 /* main */
 
@@ -175,7 +46,7 @@ async fn main() -> Result<()> {
         .set(get_version_manifest().await?)
         .map_err(|_| unreachable!("manifest already set"))?;
 
-    let args = std::env::args().collect_vec();
+    let args = std::env::args().collect::<Vec<_>>();
 
     let log_name = format!(
         "mcdl-{}{}.log",
@@ -244,7 +115,7 @@ async fn list_impl(filter: Option<ListFilter>, installed: bool) -> Result<()> {
     let filter = filter.unwrap_or_default();
     debug!(?filter);
 
-    let versions = MANIFEST
+    let mut versions = MANIFEST
         .get()
         .expect("manifest not set")
         .versions
@@ -265,8 +136,8 @@ async fn list_impl(filter: Option<ListFilter>, installed: bool) -> Result<()> {
                 _ => unreachable!(),
             }
         })
-        .sorted()
-        .collect_vec();
+        .collect::<Vec<_>>();
+    versions.sort();
 
     info!("Found {} matching versions", versions.len());
 
@@ -278,7 +149,7 @@ async fn list_impl(filter: Option<ListFilter>, installed: bool) -> Result<()> {
         let filtered_instances = installed_instances
             .iter()
             .filter(|(_, i)| versions.iter().any(|v| v.id == i.id))
-            .collect_vec();
+            .collect::<Vec<_>>();
 
         info!("Found {} installed versions", filtered_instances.len());
         if filtered_instances.is_empty() {
@@ -401,13 +272,17 @@ async fn install_impl(versions: Option<Vec<VersionNumber>>) -> Result<()> {
         "Installing {} version{}: {}\n",
         versions.len(),
         if versions.len() == 1 { "" } else { "s" },
-        versions.iter().map(ToString::to_string).join(", ")
+        versions
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join(", ")
     );
 
     let to_install_versions = game_versions
         .iter()
         .filter(|v| versions.contains(&v.id))
-        .collect_vec();
+        .collect::<Vec<_>>();
     app::install_versions(to_install_versions)
         .await
         .wrap_err("Error while installing versions")?;
@@ -433,8 +308,7 @@ async fn run_impl(version: String) -> Result<()> {
 
 #[instrument(err, ret(level = "debug"))]
 fn locate_impl(what: WhatEnum) -> Result<()> {
-    // TODO: pass directly
-    app::locate(&what.to_string()).wrap_err(format!("Error while locating `{what}`"))?;
+    app::locate(what).wrap_err(format!("Error while locating `{what}`"))?;
 
     Ok(())
 }

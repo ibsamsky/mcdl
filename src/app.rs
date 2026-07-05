@@ -1,29 +1,28 @@
 use std::ffi::OsString;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::LazyLock;
 use std::time::Duration;
 
-use bytes::Bytes;
 use color_eyre::eyre::{self, Result, WrapErr, eyre};
 use dialoguer::Confirm;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
-use itertools::Itertools;
 use tokio::fs;
 use tokio::process::Command;
 use tokio::task::JoinSet;
 use tracing::{debug, error, info, instrument, warn};
 
-use crate::common::{LOG_BASE_DIR, META, PROJ_DIRS, REQWEST_CLIENT};
-use crate::types::meta::{InstanceMeta, InstanceSettings};
+use crate::cli::WhatEnum;
+use crate::jre;
+use crate::paths::{LOG_BASE_DIR, PROJ_DIRS};
+use crate::types::meta::{InstanceMeta, InstanceSettings, META};
 use crate::types::version::{GameVersion, VersionMetadata, VersionNumber};
-use crate::utils::net::{download_jre, get_version_metadata};
+use crate::utils::net::{REQWEST_CLIENT, get_version_metadata};
 
 static INSTANCE_BASE_DIR: LazyLock<PathBuf> =
     LazyLock::new(|| PROJ_DIRS.data_local_dir().join("instance"));
-static JRE_BASE_DIR: LazyLock<PathBuf> = LazyLock::new(|| PROJ_DIRS.data_local_dir().join("jre"));
 static INSTANCE_SETTINGS_BASE_DIR: LazyLock<PathBuf> =
     LazyLock::new(|| PROJ_DIRS.config_local_dir().join("instance"));
-static PB_STYLE: LazyLock<ProgressStyle> = LazyLock::new(|| {
+pub(crate) static PB_STYLE: LazyLock<ProgressStyle> = LazyLock::new(|| {
     ProgressStyle::with_template("{prefix:.bold.blue.bright} {spinner:.green.bright} {wide_msg}")
         .unwrap()
         .tick_chars("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏-")
@@ -169,17 +168,11 @@ pub(crate) async fn install_versions(versions: Vec<&GameVersion>) -> Result<()> 
             "Installing JRE"
         );
 
-        let pb_jre = bars.add(
-            ProgressBar::new_spinner()
-                .with_style(PB_STYLE.clone())
-                .with_prefix(format!("JRE {jre_version} for {}", version.id)),
-        );
-        pb_jre.enable_steady_tick(Duration::from_millis(100));
-
         // at the same time, spawn a thread to install the JRE
+        let bars = bars.clone();
+        let version_id = version.id.clone();
         install_threads.spawn(async move {
-            pb_jre.set_message("Installing JRE...");
-            install_jre(jre_version, &pb_jre)
+            jre::install_jre(jre_version, version_id, Some(bars))
                 .await
                 .wrap_err(format!("Failed to install JRE {jre_version}"))?;
 
@@ -199,35 +192,6 @@ pub(crate) async fn install_versions(versions: Vec<&GameVersion>) -> Result<()> 
 // pub(crate) async fn install_version(version: &GameVersion) -> Result<()> {
 //     install_versions(vec![version]).await
 // }
-
-#[instrument(err, ret(level = "debug"), skip(pb))]
-async fn install_jre(major_version: u8, pb: &ProgressBar) -> Result<()> {
-    let jre_dir = JRE_BASE_DIR.join(major_version.to_string());
-
-    if META!().jre_installed(major_version) {
-        pb.finish_with_message("Cancelled (already installed)");
-        debug!("Cancelled JRE install (this should never happen)");
-        return Ok(());
-    }
-
-    pb.set_message("Downloading JRE...");
-    info!("Starting JRE download");
-    let jre = download_jre(major_version).await?;
-    info!("Downloaded JRE");
-
-    pb.set_message("Extracting JRE...");
-    info!("Starting JRE extraction");
-    extract_jre(jre, &jre_dir).wrap_err("Failed to extract JRE")?;
-    info!("Extracted JRE");
-
-    pb.set_message("Updating metadata...");
-    META!().add_jre(major_version);
-    META!().save()?;
-
-    pb.finish_with_message("Done!");
-    info!("Installed JRE");
-    Ok(())
-}
 
 #[instrument(err, ret(level = "debug"), skip(id))]
 pub(crate) fn uninstall_instance(id: VersionNumber) -> Result<()> {
@@ -297,12 +261,7 @@ pub(crate) async fn run_instance(id: VersionNumber) -> Result<()> {
 
     if !META!().jre_installed(jre_version) {
         debug!(jre = jre_version, "Installing JRE due to config change");
-        let pb = ProgressBar::new_spinner()
-            .with_style(PB_STYLE.clone())
-            .with_prefix(format!("JRE {jre_version} for {id}"));
-        pb.enable_steady_tick(Duration::from_millis(100));
-
-        install_jre(jre_version, &pb).await?;
+        jre::install_jre(jre_version, &id, None).await?;
     }
 
     // make sure JRE version is correct
@@ -322,9 +281,10 @@ pub(crate) async fn run_instance(id: VersionNumber) -> Result<()> {
     let args_string = args
         .iter()
         .map(|s| shell_escape::escape(s.to_str().unwrap().into()))
+        .collect::<Vec<_>>()
         .join(" ");
 
-    let java_path = get_java_path(jre_version);
+    let java_path = jre::get_java_path(jre_version);
 
     debug!(
         "Starting server with command line: {java} {args}",
@@ -407,179 +367,24 @@ pub(crate) async fn run_instance(id: VersionNumber) -> Result<()> {
 }
 
 #[instrument(err, ret(level = "debug"))]
-pub(crate) fn locate(what: &String) -> Result<()> {
-    match what.to_ascii_lowercase().as_str() {
-        "java" => {
-            println!("JRE base directory: {}", JRE_BASE_DIR.display());
+pub(crate) fn locate(what: WhatEnum) -> Result<()> {
+    match what {
+        WhatEnum::Java => {
+            println!("JRE base directory: {}", jre::JRE_BASE_DIR.display());
         }
-        "instance" => {
+        WhatEnum::Instance => {
             println!("Instance base directory: {}", INSTANCE_BASE_DIR.display());
         }
-        "config" => {
+        WhatEnum::Config => {
             println!(
                 "Instance settings base directory: {}",
                 INSTANCE_SETTINGS_BASE_DIR.display()
             );
         }
-        "log" => {
+        WhatEnum::Log => {
             println!("Log base directory: {}", LOG_BASE_DIR.display());
         }
-        _ => {
-            return Err(eyre!("Unknown location: {what}"));
-        }
     }
 
     Ok(())
-}
-
-// platform specific stuff
-
-#[cfg(windows)]
-#[instrument(err, ret(level = "debug"), skip_all, fields(path = %jre_dir.as_ref().display()))]
-fn extract_jre(jre: Bytes, jre_dir: impl AsRef<Path>) -> Result<()> {
-    use std::io::{BufReader, Cursor};
-
-    use zip::ZipArchive;
-
-    let jre_dir = jre_dir.as_ref();
-
-    std::fs::create_dir_all(jre_dir).wrap_err(format!(
-        "Failed to create directory for JRE: {path}",
-        path = jre_dir.display()
-    ))?;
-
-    // must be Read + Seek
-    let reader: BufReader<Cursor<Vec<u8>>> = BufReader::new(Cursor::new(jre.into()));
-    let mut archive = ZipArchive::new(reader)?;
-
-    for i in 0..archive.len() {
-        let mut entry = archive.by_index(i)?;
-        let filepath = entry.enclosed_name().ok_or(eyre!("Invalid file path"))?;
-
-        // strip the first directory
-        let outpath = jre_dir.join(filepath.components().skip(1).collect::<PathBuf>());
-
-        if entry.is_dir() {
-            if outpath.exists() {
-                warn!(path = %outpath.display(), "Clobbering existing file");
-            }
-            std::fs::create_dir_all(outpath)?;
-            continue;
-        }
-
-        let mut outfile = std::fs::File::create(&outpath)?;
-
-        std::io::copy(&mut entry, &mut outfile)?;
-    }
-
-    let java_path = jre_dir.join("bin").join("java.exe");
-
-    if !java_path.exists() {
-        return Err(eyre!(
-            "Failed to extract JRE ({} does not exist)",
-            java_path.display()
-        ));
-    }
-
-    Ok(())
-}
-
-#[cfg(target_os = "linux")]
-#[instrument(err, ret(level = "debug"), skip_all, fields(path = %jre_dir.as_ref().display()))]
-fn extract_jre(jre: Bytes, jre_dir: impl AsRef<Path>) -> Result<()> {
-    use std::os::unix::fs::PermissionsExt;
-
-    use bytes::Buf;
-    use flate2::read::GzDecoder;
-    use tar::Archive;
-
-    let mut reader = jre.reader();
-    let mut archive = Archive::new(GzDecoder::new(&mut reader));
-    let entries = archive.entries()?;
-    let jre_dir = jre_dir.as_ref();
-
-    std::fs::create_dir_all(jre_dir).wrap_err(format!(
-        "Failed to create directory for JRE: {path}",
-        path = jre_dir.display()
-    ))?;
-
-    for entry in entries {
-        let mut entry = entry?;
-        let filepath = entry.path()?;
-
-        // strip the first directory
-        let outpath = jre_dir.join(filepath.components().skip(1).collect::<PathBuf>());
-
-        entry.unpack(outpath)?;
-    }
-
-    let java_path = jre_dir.join("bin").join("java");
-
-    if !java_path.exists() {
-        return Err(eyre!(
-            "Failed to extract JRE ({} does not exist)",
-            java_path.display()
-        ));
-    }
-
-    let mut perms = std::fs::metadata(&java_path)?.permissions();
-    perms.set_mode(0o755);
-    std::fs::set_permissions(&java_path, perms)?;
-
-    Ok(())
-}
-
-#[cfg(not(any(windows, target_os = "linux")))]
-#[instrument(err, ret(level = "debug"), skip(_jre))]
-fn extract_jre(_jre: Bytes, _jre_dir: &PathBuf) -> Result<()> {
-    Err(eyre!("Unsupported OS")) // TODO fail gracefully
-}
-
-#[instrument(ret(level = "debug"))]
-fn get_java_path(version: u8) -> PathBuf {
-    JRE_BASE_DIR
-        .join(version.to_string())
-        .join("bin")
-        .join(format!("java{}", std::env::consts::EXE_SUFFIX))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    #[cfg(not(target_os = "macos"))]
-    async fn test_install_jre() {
-        let version = match std::env::consts::OS {
-            "macos" => 11, // Adoptium doesn't have JRE 8 for aarch64 macOS
-            _ => 8,
-        };
-
-        // remove the jre directory if the test panics
-        scopeguard::defer! {
-            let path = JRE_BASE_DIR.join(version.to_string());
-
-            if path.exists() {
-                std::fs::remove_dir_all(path).unwrap();
-            }
-
-            META!().remove_jre(version);
-            META!().save().unwrap();
-        }
-
-        assert!(
-            !META!().jre_installed(version),
-            "JRE 8 is already installed"
-        );
-
-        install_jre(version, &ProgressBar::hidden()).await.unwrap();
-
-        assert!(
-            get_java_path(version).exists(),
-            "{:?} does not exist",
-            get_java_path(version)
-        );
-        assert!(META!().remove_jre(version), "Failed to remove JRE");
-        assert!(META!().save().is_ok(), "Failed to save metadata");
-    }
 }

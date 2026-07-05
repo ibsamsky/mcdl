@@ -1,17 +1,38 @@
 use std::fmt::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 use std::time::{Duration, SystemTime};
 
 use bytes::Bytes;
 use color_eyre::eyre::{Result, eyre};
-use reqwest::StatusCode;
+use reqwest::header::{self, HeaderMap};
+use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
+use tokio::fs;
 use tracing::{debug, instrument};
 
-use crate::common::{PROJ_DIRS, REQWEST_CLIENT};
-use crate::types::net::CachedResponse;
+use crate::cli::MCDL_VERSION;
+use crate::paths::PROJ_DIRS;
 use crate::types::version::{GameVersion, GameVersionList, VersionMetadata};
+
+pub(crate) static REQWEST_CLIENT: LazyLock<Client> = LazyLock::new(|| {
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        header::USER_AGENT,
+        header::HeaderValue::from_str(&format!(
+            "mcdl/{} ({})",
+            MCDL_VERSION.as_str(),
+            env!("CARGO_PKG_HOMEPAGE")
+        ))
+        .expect("failed to build user agent header"),
+    );
+
+    Client::builder()
+        .default_headers(headers)
+        .tcp_keepalive(Some(Duration::from_secs(10)))
+        .build()
+        .expect("failed to build reqwest client")
+});
 
 static CACHE_BASE_DIR: LazyLock<PathBuf> = LazyLock::new(|| PROJ_DIRS.cache_dir().to_path_buf());
 
@@ -19,6 +40,36 @@ const PISTON_API_URL: &str = "https://piston-meta.mojang.com/";
 // const FABRIC_API_URL: &str = "https://meta.fabricmc.net/";
 
 const CACHE_EXPIRATION_TIME: u64 = 60 * 10; // 10 minutes
+
+#[derive(Serialize, Deserialize)]
+struct CachedResponse<T> {
+    data: T,
+    expires: SystemTime,
+}
+
+impl<T> CachedResponse<T> {
+    fn new(data: T, expires: SystemTime) -> Self {
+        Self { data, expires }
+    }
+
+    fn is_expired(&self) -> bool {
+        SystemTime::now() > self.expires
+    }
+
+    async fn from_file(path: impl AsRef<Path>) -> Result<Self>
+    where Self: for<'de> Deserialize<'de> {
+        let data = fs::read(path).await?;
+        Ok(rmp_serde::from_slice(&data)?)
+    }
+
+    async fn save(&self, path: impl AsRef<Path>) -> Result<()>
+    where Self: Serialize {
+        let data = rmp_serde::to_vec(self)?;
+        fs::create_dir_all(path.as_ref().parent().expect("infallible")).await?;
+        fs::write(path, data).await?;
+        Ok(())
+    }
+}
 
 #[inline]
 fn api_path(path: &str) -> String {

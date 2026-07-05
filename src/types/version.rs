@@ -315,7 +315,7 @@ mod tests {
             minor: 16,
             patch: 4,
         };
-        assert!(v1 == v2);
+        assert_eq!(v1, v2);
     }
 
     #[test]
