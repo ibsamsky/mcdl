@@ -13,11 +13,12 @@ pub static MCDL_VERSION: LazyLock<String> = LazyLock::new(|| {
     format!(
         "{}{}+g{}",
         env!("CARGO_PKG_VERSION"),
-        match env!("VERGEN_CARGO_OPT_LEVEL") {
-            "1" => "-debug",
-            _ => "",
+        if option_env!("MCDL_BUILD_DEBUG") == Some("1") {
+            "-debug"
+        } else {
+            ""
         },
-        env!("VERGEN_GIT_SHA"),
+        option_env!("MCDL_GIT_SHA").unwrap_or("unknown"),
     )
 });
 

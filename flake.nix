@@ -15,6 +15,7 @@
       ...
     }@inputs:
     let
+      revision = self.shortRev or self.dirtyShortRev or "unknown";
       mcdl-package =
         {
           pkg-config,
@@ -22,10 +23,13 @@
         }:
         rustPlatform.buildRustPackage (finalAttrs: {
           pname = "mcdl";
-          version = self.shortRev or self.dirtyShortRev or "unknown";
+          version = revision;
 
           src = ./.;
           cargoLock.lockFile = ./Cargo.lock;
+
+          MCDL_GIT_SHA = revision;
+          MCDL_BUILD_DEBUG = "0";
 
           nativeBuildInputs = [ pkg-config ];
 
@@ -59,12 +63,16 @@
             {
               inherit mcdl;
 
-              mcdl-debug = mcdl.overrideAttrs (final: prev: {
-                pname = "${prev.pname}-debug";
+              mcdl-debug = mcdl.overrideAttrs (
+                final: prev: {
+                  pname = "${prev.pname}-debug";
 
-                cargoBuildType = "debug";
-                cargoCheckType = final.cargoBuildType;
-              });
+                  cargoBuildType = "debug";
+                  cargoCheckType = final.cargoBuildType;
+
+                  MCDL_BUILD_DEBUG = "1";
+                }
+              );
 
               default = mcdl;
             };

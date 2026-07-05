@@ -14,6 +14,7 @@ jobs:
     name: build ${{ matrix.profile }} for ${{ matrix.build }}
     env:
       BUILD_DIR: ${{ matrix.profile != 'dev' && matrix.profile || 'debug' }}
+      MCDL_BUILD_DEBUG: "0"
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -28,6 +29,9 @@ jobs:
             os: windows-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Set build metadata
+        shell: bash
+        run: printf 'MCDL_GIT_SHA=%.7s\n' "$GITHUB_SHA" >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@nightly
       - uses: Swatinem/rust-cache@v2
         with:
@@ -49,6 +53,7 @@ jobs:
     name: build ${{ matrix.profile }} for ${{ matrix.build }}
     env:
       BUILD_DIR: ${{ matrix.profile != 'dev' && matrix.profile || 'debug' }}
+      MCDL_BUILD_DEBUG: "0"
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -62,6 +67,9 @@ jobs:
             target: aarch64-unknown-linux-gnu
     steps:
       - uses: actions/checkout@v7
+      - name: Set build metadata
+        shell: bash
+        run: printf 'MCDL_GIT_SHA=%.7s\n' "$GITHUB_SHA" >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@nightly
       - name: Use Cross
         run: cargo install cross

@@ -13,6 +13,7 @@ env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
   CARGO_NET_RETRY: 10
+  MCDL_BUILD_DEBUG: "1"
   RUST_BACKTRACE: short
   RUSTUP_MAX_RETRIES: 10
 
@@ -21,6 +22,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Set build metadata
+        shell: bash
+        run: printf 'MCDL_GIT_SHA=%.7s\n' "$GITHUB_SHA" >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@nightly
         with:
           components: rustfmt
@@ -39,6 +43,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Set build metadata
+        shell: bash
+        run: printf 'MCDL_GIT_SHA=%.7s\n' "$GITHUB_SHA" >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
@@ -72,6 +79,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
+      - name: Set build metadata
+        shell: bash
+        run: printf 'MCDL_GIT_SHA=%.7s\n' "$GITHUB_SHA" >> "$GITHUB_ENV"
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
