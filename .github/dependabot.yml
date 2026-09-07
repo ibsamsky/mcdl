@@ -1,9 +1,11 @@
 version: 2
 updates:
   - package-ecosystem: cargo
-    directory: "/"
+    directory: /
     schedule:
       interval: daily
+    cooldown:
+      default-days: 3
     groups:
       production-deps:
         dependency-type: production
@@ -11,7 +13,20 @@ updates:
       dev-deps:
         dependency-type: development
         update-types: [ minor, patch ]
+
   - package-ecosystem: github-actions
-    directory: "/"
+    directory: /
     schedule:
       interval: daily
+    cooldown:
+      default-days: 3
+
+  - package-ecosystem: nix
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 3
+    groups:
+      nix:
+        patterns: ["*"]
